@@ -1,0 +1,186 @@
+// ==UserScript==
+// @name         Copy ChatGPT Conversation to Clipboard
+// @namespace    https://violentmonkey.github.io/
+// @version      1.0
+// @description  Adds buttons to copy the entire chat conversation in markdown or plain text format to the clipboard. Press 'space' to skip the initial delay.
+// @icon         https://chat.openai.com/favicon.ico
+// @match        https://chat.openai.com/*
+// @match        https://chatgpt.com/*
+// @match        https://new.oaifree.com/*
+// @grant        none
+// @require      https://unpkg.com/turndown/dist/turndown.js
+// @run-at       document-end
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    let timeoutId;
+
+    // Initialize the script after a delay
+    function initializeScript() {
+        createCopyButtons();
+        observeContentChanges();
+    }
+
+    // Set the timeout for 30 seconds
+    timeoutId = setTimeout(initializeScript, 30000);
+
+    // Listen for 'space' key press to skip the delay
+    document.addEventListener('keydown', function(event) {
+        if (event.code === 'Space') {
+            clearTimeout(timeoutId); // Cancel the timeout
+            initializeScript(); // Initialize the script immediately
+        }
+    });
+
+    // Function to observe content changes
+    function observeContentChanges() {
+        const targetNode = document.querySelector('main'); // Main content area
+        if (!targetNode) {
+            console.log('Main content area not found.');
+            return;
+        }
+
+        const config = { childList: true, subtree: true };
+        const callback = function () {
+            console.log('Content changed, attempting to create copy buttons...');
+            createCopyButtons();
+        };
+
+        const observer = new MutationObserver(callback);
+        observer.observe(targetNode, config);
+    }
+
+    // Function to create the buttons
+    function createCopyButtons() {
+        // Remove existing buttons if present
+        const existingButtons = document.querySelectorAll('.copy-button');
+        existingButtons.forEach(button => button.remove());
+
+        // Select all conversation elements using the `.text-message` class
+        const conversationElements = document.querySelectorAll('.text-message');
+
+        if (conversationElements.length > 0) {
+            console.log('Conversation elements found. Creating copy buttons...');
+
+            // Create the "Copy Markdown" button
+            const copyMarkdownButton = document.createElement('button');
+            copyMarkdownButton.classList.add('copy-button');
+            copyMarkdownButton.innerHTML = "📋 MD";
+            copyMarkdownButton.title = "Copy the entire conversation as Markdown";
+            styleButton(copyMarkdownButton, 60, 70);
+
+            // Create the "Copy Text" button
+            const copyTextButton = document.createElement('button');
+            copyTextButton.classList.add('copy-button');
+            copyTextButton.innerHTML = "📋 TXT";
+            copyTextButton.title = "Copy the entire conversation as Plain Text";
+            styleButton(copyTextButton, 100, 70);
+
+            // Append buttons to the body
+            document.body.appendChild(copyMarkdownButton);
+            document.body.appendChild(copyTextButton);
+
+            // Event listener for "Copy Markdown"
+            copyMarkdownButton.addEventListener('click', function () {
+                const turndownService = new TurndownService({ codeBlockStyle: 'fenced' });
+
+                // Add rule to correctly format code blocks
+                turndownService.addRule('pre', {
+                    filter: ['pre'],
+                    replacement: function (content, node) {
+                        const match = node.textContent.match(/^(\w+)\s*Copy code\s*/);
+                        const lang = match ? match[1] : '';
+                        const codeContent = node.textContent.replace(/^(\w+)\s*Copy code\s*/, '');
+
+                        return `\n\`\`\`${lang}\n${codeContent}\n\`\`\`\n`;
+                    }
+                });
+
+                let markdownText = '';
+                conversationElements.forEach(element => {
+                    const elementContent = element.innerHTML || element.textContent;
+                    markdownText += `${turndownService.turndown(elementContent)}\n\n`;
+                });
+
+                copyToClipboard(markdownText);
+                alert('The entire conversation has been copied to the clipboard as Markdown!');
+            });
+
+            // Event listener for "Copy Text"
+            copyTextButton.addEventListener('click', function () {
+                let plainText = '';
+                conversationElements.forEach(element => {
+                    const elementContent = element.innerText || element.textContent;
+                    // Remove "Copy code" text from the output
+                    const cleanedContent = elementContent.replace(/^Copy code\s*/gm, '');
+                    plainText += `${cleanedContent}\n\n`;
+                });
+
+                copyToClipboard(plainText);
+                alert('The entire conversation has been copied to the clipboard as Plain Text!');
+            });
+        } else {
+            console.log('No conversation elements found yet.');
+        }
+    }
+
+    // Function to style buttons based on static positioning
+    function styleButton(button, top, right) {
+        button.style.position = 'fixed';
+        button.style.top = `${top}px`;
+        button.style.right = `${right}px`;
+        button.style.zIndex = '1000';
+        button.style.padding = '8px 12px';
+        button.style.margin = '5px 0';
+        button.style.backgroundColor = '#212121';
+        button.style.color = '#ececec';
+        button.style.border = '1px solid #333';
+        button.style.cursor = 'pointer';
+        button.style.borderRadius = '20px';
+        button.style.boxShadow = '0 2px 5px rgba(0,0,0,0.15)';
+        button.style.width = '70px';
+        button.style.textAlign = 'center';
+        button.style.fontSize = '12px';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+
+        // Add hover effect
+        button.addEventListener('mouseover', function () {
+            button.style.backgroundColor = '#2f2f2f';
+        });
+        button.addEventListener('mouseout', function () {
+            button.style.backgroundColor = '#212121';
+        });
+    }
+
+    // Function to copy the text to clipboard
+    function copyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.style.position = 'fixed';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '2em';
+        textArea.style.height = '2em';
+        textArea.style.padding = '0';
+        textArea.style.border = 'none';
+        textArea.style.outline = 'none';
+        textArea.style.boxShadow = 'none';
+        textArea.style.background = 'transparent';
+        textArea.value = text;
+
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            console.error('Unable to copy', err);
+        }
+
+        document.body.removeChild(textArea);
+    }
+})();
