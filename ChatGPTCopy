@@ -1,14 +1,15 @@
 // ==UserScript==
 // @name         Copy ChatGPT Conversation to Clipboard
-// @namespace    https://violentmonkey.github.io/
+// @namespace    https://github.com/agehring80
 // @version      1.0
-// @description  Adds buttons to copy the entire chat conversation in markdown or plain text format to the clipboard. Press 'space' to skip the initial delay.
+// @description  Adds buttons to copy the entire chat conversation (user inputs and AI responses) in markdown or plain text format to the clipboard. Press 'space' to skip the initial delay.
 // @icon         https://chat.openai.com/favicon.ico
 // @match        https://chat.openai.com/*
 // @match        https://chatgpt.com/*
 // @match        https://new.oaifree.com/*
 // @grant        none
 // @require      https://unpkg.com/turndown/dist/turndown.js
+// @author       GRY
 // @run-at       document-end
 // ==/UserScript==
 
