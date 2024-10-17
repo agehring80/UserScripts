@@ -1,0 +1,133 @@
+// ==UserScript==
+// @name         Zattoo only Free 2
+// @namespace    https://violentmonkey.github.io/
+// @version      1.7
+// @description  Zattoo Guide content, hide locked channels.
+// @author       GRY
+// @match        https://zattoo.com/guide*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    let overlay = null;
+    let isFullyLoaded = false;
+    let loadingTimeout = null;
+
+    // Create and display the rotating dots overlay
+    function createOverlay() {
+        overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = 0;
+        overlay.style.left = 0;
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        overlay.style.zIndex = '9999';  // Ensure the overlay is on top
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+
+        const spinner = document.createElement('div');
+        spinner.className = 'loading-spinner';
+        overlay.appendChild(spinner);
+
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .loading-spinner {
+                width: 40px;
+                height: 30px;
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                grid-gap: 6px;
+            }
+
+            .loading-spinner div {
+                width: 15px;
+                height: 15px;
+                background-color: red;
+                border-radius: 50%;
+                animation: bounce 1.2s infinite ease-in-out both;
+            }
+
+            .loading-spinner div:nth-child(1) { animation-delay: -1.1s; }
+            .loading-spinner div:nth-child(2) { animation-delay: -1s; }
+            .loading-spinner div:nth-child(3) { animation-delay: -0.9s; }
+            .loading-spinner div:nth-child(4) { animation-delay: -0.8s; }
+            .loading-spinner div:nth-child(5) { animation-delay: -0.7s; }
+            .loading-spinner div:nth-child(6) { animation-delay: -0.6s; }
+            .loading-spinner div:nth-child(7) { animation-delay: -0.5s; }
+            .loading-spinner div:nth-child(8) { animation-delay: -0.4s; }
+            .loading-spinner div:nth-child(9) { animation-delay: -0.3s; }
+
+            @keyframes bounce {
+                0%, 100% {
+                    transform: scale(1);
+                }
+                50% {
+                    transform: scale(0.3);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        for (let i = 0; i < 9; i++) {
+            const dot = document.createElement('div');
+            spinner.appendChild(dot);
+        }
+
+        document.body.appendChild(overlay);
+    }
+
+    // Remove the overlay
+    function removeOverlay() {
+        if (overlay) {
+            document.body.removeChild(overlay);
+        }
+    }
+
+    // Function to hide locked buttons and their corresponding sections
+    function processLockedContent() {
+        const buttons = document.querySelectorAll('div[data-context="guide"] button[data-soul="GUIDE_CHANNEL"]');
+        const sections = document.querySelectorAll('div[data-context="guide"] section');
+
+        buttons.forEach((button, index) => {
+            const lockedSpan = button.querySelector('span[aria-label="Locked"]');
+            if (lockedSpan && sections[index]) {
+                const section = sections[index];
+                button.style.display = 'none';  // Hide locked button
+                section.style.display = 'none';  // Hide corresponding section
+            }
+        });
+    }
+
+    // Function called when content loading is complete
+    function onContentLoaded() {
+        if (!isFullyLoaded) {
+            processLockedContent();  // Hide locked content
+            isFullyLoaded = true;
+            removeOverlay();  // Remove the overlay when done
+        }
+    }
+
+    // Handle loading timeout (triggered after a short delay)
+    function handleLoadingTimeout() {
+        clearTimeout(loadingTimeout);
+        loadingTimeout = setTimeout(onContentLoaded, 1000);  // Wait 1 second after the last mutation to declare loading done
+    }
+
+    // MutationObserver to monitor DOM changes and detect when content stops loading
+    const observer = new MutationObserver(() => {
+        if (!isFullyLoaded) {
+            handleLoadingTimeout();  // Reset the timeout every time new content is loaded
+        }
+    });
+
+    // Start observing the document body for changes
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Show the rotating dots overlay
+    createOverlay();
+
+})();
