@@ -1,0 +1,66 @@
+// ==UserScript==
+// @name         Zattoo only Free
+// @namespace    https://violentmonkey.github.io/
+// @version      2024-07-13
+// @description  Remove sections with locked ribbons on Zattoo highlights and channels pages
+// @author       GRY
+// @match        https://zattoo.com/highlights*
+// @match        https://zattoo.com/channels*
+// @grant        none
+// @require      https://code.jquery.com/jquery-3.6.0.min.js
+// ==/UserScript==
+
+/* global $ */
+
+// Function to remove sections on the highlights page
+function removeLockedHighlights() {
+    $('section[data-soul="TEASER_BROADCAST"]').each(function() {
+        if ($(this).find('span[data-soul="RIBBON_LOCKED"]').length > 0) {
+            $(this).remove(); // Remove the section
+        }
+    });
+}
+
+// Function to remove sections on the channels page
+function removeLockedChannels() {
+    $('section[data-soul="TEASER_CHANNEL"]').each(function() {
+        if ($(this).find('span[data-soul="RIBBON_LOCKED"]').length > 0) {
+            // Find the next TEASER_PREVIEW section and remove both TEASER_CHANNEL and TEASER_PREVIEW
+            let $teaserChannel = $(this);
+            let $teaserPreview = $teaserChannel.next('section[data-soul="TEASER_PREVIEW"]');
+            $teaserChannel.add($teaserPreview).remove();
+        }
+    });
+}
+
+// Function to determine which sections to remove based on the current page
+function removeLockedSections() {
+    if (window.location.pathname.includes('/highlights')) {
+        removeLockedHighlights();
+    } else if (window.location.pathname.includes('/channels')) {
+        removeLockedChannels();
+    }
+}
+
+// Function to observe DOM mutations and remove locked sections dynamically
+function observeDOMChanges() {
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.addedNodes.length > 0) {
+                removeLockedSections(); // Dynamically remove locked sections
+            }
+        });
+    });
+
+    // Start observing the body for changes
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Wait for the document to be fully loaded
+$(document).ready(function() {
+    // Initial removal of locked sections based on the page
+    removeLockedSections();
+
+    // Start observing for any future changes in the DOM
+    observeDOMChanges();
+});
